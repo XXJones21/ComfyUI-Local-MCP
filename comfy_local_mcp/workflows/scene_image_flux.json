@@ -1,0 +1,33 @@
+{
+  "_meta": {
+    "name": "scene_image_flux",
+    "description": "First-person POV scene image via Flux.1-dev Q4 GGUF, portrait 9:16 (768x1344). Proven local stack on RTX 4080.",
+    "required_models": [
+      "unet_gguf/flux1-dev-Q4_K_S.gguf",
+      "clip/clip_l.safetensors",
+      "clip/t5xxl_fp16.safetensors",
+      "vae/flux_vae.safetensors"
+    ],
+    "required_nodes": ["UnetLoaderGGUF", "DualCLIPLoader", "VAELoader", "FluxGuidance", "ConditioningZeroOut", "KSampler", "VAEDecode", "SaveImage"],
+    "notes": "Flux uses CFG 1.0 + FluxGuidance and zeroes the negative conditioning, so there is no real negative_prompt. Swap node 12 unet_name to a Flux.1 Krea Dev GGUF once present."
+  },
+  "_overrides": {
+    "prompt": "6.inputs.text",
+    "seed": "13.inputs.seed",
+    "width": "5.inputs.width",
+    "height": "5.inputs.height",
+    "steps": "13.inputs.steps"
+  },
+  "graph": {
+    "5":  {"class_type": "EmptySD3LatentImage", "inputs": {"width": 768, "height": 1344, "batch_size": 1}},
+    "6":  {"class_type": "CLIPTextEncode", "inputs": {"text": "first person POV, immersive scene", "clip": ["11", 0]}},
+    "8":  {"class_type": "VAEDecode", "inputs": {"samples": ["13", 0], "vae": ["10", 0]}},
+    "9":  {"class_type": "SaveImage", "inputs": {"filename_prefix": "comfy_scene_flux", "images": ["8", 0]}},
+    "10": {"class_type": "VAELoader", "inputs": {"vae_name": "flux_vae.safetensors"}},
+    "11": {"class_type": "DualCLIPLoader", "inputs": {"clip_name1": "clip_l.safetensors", "clip_name2": "t5xxl_fp16.safetensors", "type": "flux"}},
+    "12": {"class_type": "UnetLoaderGGUF", "inputs": {"unet_name": "flux1-dev-Q4_K_S.gguf"}},
+    "13": {"class_type": "KSampler", "inputs": {"seed": 0, "steps": 20, "cfg": 1.0, "sampler_name": "euler", "scheduler": "simple", "denoise": 1.0, "model": ["12", 0], "positive": ["17", 0], "negative": ["16", 0], "latent_image": ["5", 0]}},
+    "16": {"class_type": "ConditioningZeroOut", "inputs": {"conditioning": ["6", 0]}},
+    "17": {"class_type": "FluxGuidance", "inputs": {"guidance": 3.5, "conditioning": ["6", 0]}}
+  }
+}

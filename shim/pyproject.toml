@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# Backward-compat shim: keeps `import engram_comfy` working for existing
+# consumers after the package was renamed to comfy_local_mcp. Install
+# comfy-local-mcp separately; this only re-exports it. Optional — only needed
+# if you have code still importing the old name.
+name = "engram-comfy"
+version = "0.1.0"
+description = "Compatibility shim re-exporting comfy_local_mcp under the old engram_comfy name"
+requires-python = ">=3.10"
+
+[tool.setuptools.packages.find]
+include = ["engram_comfy*"]

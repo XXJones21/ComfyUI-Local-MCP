@@ -1,0 +1,63 @@
+{
+  "_meta": {
+    "name": "scene_image_sdxl_turbo",
+    "description": "First-person POV scene image via SDXL-Turbo, 1024x1024, 1 step.",
+    "required_models": ["checkpoints/sd_xl_turbo_1.0_fp16.safetensors"],
+    "required_nodes": ["CheckpointLoaderSimple", "KSampler", "VAEDecode", "SaveImage"]
+  },
+  "_overrides": {
+    "prompt": "6.inputs.text",
+    "negative_prompt": "7.inputs.text",
+    "seed": "3.inputs.seed",
+    "width": "5.inputs.width",
+    "height": "5.inputs.height",
+    "steps": "3.inputs.steps"
+  },
+  "graph": {
+    "3": {
+      "class_type": "KSampler",
+      "inputs": {
+        "seed": 0,
+        "steps": 1,
+        "cfg": 1.0,
+        "sampler_name": "euler",
+        "scheduler": "normal",
+        "denoise": 1.0,
+        "model": ["4", 0],
+        "positive": ["6", 0],
+        "negative": ["7", 0],
+        "latent_image": ["5", 0]
+      }
+    },
+    "4": {
+      "class_type": "CheckpointLoaderSimple",
+      "inputs": {"ckpt_name": "sd_xl_turbo_1.0_fp16.safetensors"}
+    },
+    "5": {
+      "class_type": "EmptyLatentImage",
+      "inputs": {"width": 1024, "height": 1024, "batch_size": 1}
+    },
+    "6": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "text": "first-person POV, immersive scene",
+        "clip": ["4", 1]
+      }
+    },
+    "7": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "text": "third person, character portrait, text, watermark, low quality",
+        "clip": ["4", 1]
+      }
+    },
+    "8": {
+      "class_type": "VAEDecode",
+      "inputs": {"samples": ["3", 0], "vae": ["4", 2]}
+    },
+    "9": {
+      "class_type": "SaveImage",
+      "inputs": {"images": ["8", 0], "filename_prefix": "comfy_scene"}
+    }
+  }
+}

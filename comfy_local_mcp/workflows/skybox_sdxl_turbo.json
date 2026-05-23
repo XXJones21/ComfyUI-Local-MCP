@@ -1,0 +1,77 @@
+{
+  "_meta": {
+    "name": "skybox_sdxl_turbo",
+    "description": "Equirectangular 2048x1024 skybox via SDXL-Turbo + pano LoRA, 1 step.",
+    "required_models": [
+      "checkpoints/sd_xl_turbo_1.0_fp16.safetensors",
+      "loras/lora_pano_lora_v3.safetensors"
+    ],
+    "required_nodes": ["CheckpointLoaderSimple", "LoraLoader", "KSampler", "VAEDecode", "SaveImage"]
+  },
+  "_overrides": {
+    "prompt": "6.inputs.text",
+    "negative_prompt": "7.inputs.text",
+    "seed": "3.inputs.seed",
+    "width": "5.inputs.width",
+    "height": "5.inputs.height",
+    "steps": "3.inputs.steps",
+    "lora_strength": "11.inputs.strength_model"
+  },
+  "graph": {
+    "3": {
+      "class_type": "KSampler",
+      "inputs": {
+        "seed": 0,
+        "steps": 1,
+        "cfg": 1.0,
+        "sampler_name": "euler",
+        "scheduler": "normal",
+        "denoise": 1.0,
+        "model": ["11", 0],
+        "positive": ["6", 0],
+        "negative": ["7", 0],
+        "latent_image": ["5", 0]
+      }
+    },
+    "4": {
+      "class_type": "CheckpointLoaderSimple",
+      "inputs": {"ckpt_name": "sd_xl_turbo_1.0_fp16.safetensors"}
+    },
+    "5": {
+      "class_type": "EmptyLatentImage",
+      "inputs": {"width": 2048, "height": 1024, "batch_size": 1}
+    },
+    "6": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "text": "equirectangular 360 panorama, seamless skybox",
+        "clip": ["11", 1]
+      }
+    },
+    "7": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "text": "people, characters, text, watermark, frame border, vignette",
+        "clip": ["11", 1]
+      }
+    },
+    "8": {
+      "class_type": "VAEDecode",
+      "inputs": {"samples": ["3", 0], "vae": ["4", 2]}
+    },
+    "9": {
+      "class_type": "SaveImage",
+      "inputs": {"images": ["8", 0], "filename_prefix": "comfy_skybox"}
+    },
+    "11": {
+      "class_type": "LoraLoader",
+      "inputs": {
+        "lora_name": "lora_pano_lora_v3.safetensors",
+        "strength_model": 0.7,
+        "strength_clip": 0.7,
+        "model": ["4", 0],
+        "clip": ["4", 1]
+      }
+    }
+  }
+}

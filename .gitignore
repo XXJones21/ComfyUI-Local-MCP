@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Generated outputs
+generated_assets/
+*.png
+*.webp
+*.mp4
+
+# Logs / scratch
+*.log
+mcp_server.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

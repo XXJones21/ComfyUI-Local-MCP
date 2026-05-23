@@ -1,0 +1,25 @@
+{
+  "name": "comfy-local-mcp",
+  "version": "0.1.0",
+  "description": "Local-first, device-aware ComfyUI for builders: an MCP server + 'comfy-local' subagent that builds, optimizes (to your GPU's VRAM), and runs ComfyUI image/video workflows, plus a cross-platform setup skill. Library-embeddable in your own Python pipelines too.",
+  "author": {
+    "name": "Joshua Jones",
+    "url": "https://github.com/XXJones21"
+  },
+  "homepage": "https://github.com/XXJones21/comfy-local-mcp",
+  "repository": "https://github.com/XXJones21/comfy-local-mcp",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "comfyui",
+    "mcp",
+    "image-generation",
+    "video-generation",
+    "local-ai",
+    "flux",
+    "vram",
+    "diffusion"
+  ],
+  "agents": ["./agents/comfy-local.md"],
+  "skills": ["./skills/"]
+}
