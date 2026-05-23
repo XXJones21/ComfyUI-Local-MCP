@@ -101,14 +101,21 @@ claude mcp add --transport http comfy-local http://127.0.0.1:9400/mcp
 
 This repo is also a Claude Code plugin: it ships the **`comfy-local`** subagent (build → optimize → execute) and the **setup** skill, and auto-wires the MCP server via `.mcp.json` (stdio). Pair it with the [Hugging Face MCP](https://huggingface.co/mcp) for model discovery (downloads use the `hf` CLI — see the setup skill).
 
-## Environment
+## Configuration
+
+Nothing about your machine is hardcoded. A per-user config at **`~/.comfy-local-mcp/config.json`** (override with `COMFY_LOCAL_MCP_CONFIG`) holds your transport/URL, output dir, and a **models map** — logical roles (`flux_unet`, `t5`, `clip_l`, `flux_vae`, `sdxl_turbo_ckpt`, `ltx_ckpt`, …) → the actual filenames you have installed. Workflows bind to those instead of the built-in defaults; explicit per-call overrides still win.
+
+You don't hand-write it: on first run the **setup skill / `comfy-local` subagent** calls `suggest_config` (inspects your installed ComfyUI models) and `save_config` to populate it. Missing roles are reported so you know what to download. With no config at all, the package still runs against a default ComfyUI on `:8188` using the workflows' fallback filenames.
+
+Resolution order everywhere: **explicit arg → env var → config file → built-in default.**
 
 | Var | Default | Purpose |
 |---|---|---|
-| `COMFY_TRANSPORT` | `rust` | `direct` (ComfyUI `:8188`) or `rust` (supervised `/comfy/*`) |
+| `COMFY_TRANSPORT` | `direct` | `direct` (ComfyUI `:8188`) or `rust` (supervised `/comfy/*` on `:8765`) |
 | `COMFY_BASE_URL` | per transport | ComfyUI/supervisor base URL |
 | `COMFY_TIMEOUT_S` | `300` | Per-job timeout |
-| `COMFY_ASSETS_DIR` | `generated_assets` | Where downloaded outputs land |
+| `COMFY_ASSETS_DIR` | `~/.comfy-local-mcp/assets` | Where downloaded outputs land |
+| `COMFY_LOCAL_MCP_CONFIG` | `~/.comfy-local-mcp/config.json` | Config file location |
 | `COMFY_MCP_TRANSPORT` | `http` | MCP transport (`http` or `stdio`) |
 | `COMFY_MCP_PORT` | `9400` | HTTP MCP port |
 

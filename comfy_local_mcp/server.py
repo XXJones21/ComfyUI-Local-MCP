@@ -33,17 +33,20 @@ from comfy_local_mcp import (
     ComfyVideoGenerator,
     list_workflows as _list_workflows,
 )
+from comfy_local_mcp import config as cfg
 from comfy_local_mcp.client import run_sync
 
 mcp = FastMCP(
     name="comfy-local",
     instructions=(
-        "Local, device-aware ComfyUI image/video generation. Recommended flow: "
-        "device_report -> recommend_workflow(goal) -> list_models (confirm installed) "
-        "-> generate_image/generate_video (or submit_workflow/get_result for a tuned "
-        "graph). recommend_workflow encodes VRAM fit for this GPU and only suggests "
-        "workflows whose models/nodes are actually installed. Tools return asset "
-        "URLs/paths, not raw bytes."
+        "Local, device-aware ComfyUI image/video generation. First run / setup: "
+        "get_config; if its models map is empty, run suggest_config then "
+        "save_config(models=...) so workflows use the user's installed model files. "
+        "Generation flow: device_report -> recommend_workflow(goal) -> list_models "
+        "(confirm installed) -> generate_image/generate_video (or submit_workflow/"
+        "get_result for a tuned graph). recommend_workflow encodes VRAM fit for this "
+        "GPU and only suggests workflows whose models/nodes are installed. Tools "
+        "return asset URLs/paths, not raw bytes."
     ),
 )
 
@@ -380,6 +383,91 @@ def health() -> dict[str, Any]:
         info["reachable"] = False
         info["detail"] = str(err)
     return info
+
+
+# How to discover each model role from installed ComfyUI models.
+# (node_class, field, [match substrings], [prefer substrings])
+_ROLE_DISCOVERY: dict[str, tuple] = {
+    "flux_unet": ("UnetLoaderGGUF", "unet_name", ["flux"], ["q4", "q5"]),
+    "t5": ("DualCLIPLoader", "clip_name2", ["t5"], ["fp8"]),
+    "clip_l": ("DualCLIPLoader", "clip_name1", ["clip_l", "clip-l"], []),
+    "flux_vae": ("VAELoader", "vae_name", ["flux", "ae"], ["flux"]),
+    "sdxl_turbo_ckpt": ("CheckpointLoaderSimple", "ckpt_name", ["turbo"], []),
+    "sdxl_base_ckpt": ("CheckpointLoaderSimple", "ckpt_name", ["xl_base", "sd_xl_base", "xl-base"], []),
+    "ltx_ckpt": ("LTXVCheckpointLoader", "ckpt_name", ["ltx"], []),
+    "wan_vae": ("WanVideoVAELoader", "model_name", ["wan"], []),
+    "wan_t5": ("WanVideoT5TextEncoderLoader", "model_name", ["t5", "umt5"], []),
+}
+
+
+def _best_match(options: list[str], match: list[str], prefer: list[str]) -> str | None:
+    cands = [o for o in options if any(m.lower() in o.lower() for m in match)]
+    if not cands:
+        return None
+    preferred = [o for o in cands if any(p.lower() in o.lower() for p in prefer)]
+    return (preferred or cands)[0]
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+def get_config() -> dict[str, Any]:
+    """Return the current ComfyLocalMCP user config and its file path.
+
+    The config holds transport/base_url, assets_dir, and a models map (logical
+    role -> the installed filename) that workflows use. Empty config is normal
+    on a fresh install — run suggest_config + save_config to populate it.
+    """
+    return {"path": str(cfg.config_path()), "config": cfg.load_config(), "model_roles": list(cfg.MODEL_ROLES)}
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+def suggest_config() -> dict[str, Any]:
+    """Inspect installed ComfyUI models and propose a models map for the config.
+
+    Read-only: does NOT write anything. Review the result, then persist it with
+    save_config(models=<proposed>). Roles with no installed match are omitted
+    (and listed under 'missing') so you know what still needs downloading.
+    """
+    client = ComfyClient()
+    proposed: dict[str, str] = {}
+    missing: list[str] = []
+    for role, (node_class, field, match, prefer) in _ROLE_DISCOVERY.items():
+        options = _installed_models(client, node_class, field)
+        pick = _best_match(options, match, prefer) if options else None
+        if pick:
+            proposed[role] = pick
+        else:
+            missing.append(role)
+    return {
+        "proposed_models": proposed,
+        "missing": missing,
+        "note": "Review, then call save_config(models=proposed_models). Missing roles need their models/custom nodes installed first.",
+    }
+
+
+@mcp.tool
+def save_config(
+    models: dict[str, str] | None = None,
+    transport: str | None = None,
+    base_url: str | None = None,
+    assets_dir: str | None = None,
+) -> dict[str, Any]:
+    """Persist user config (merged into ~/.comfy-local-mcp/config.json).
+
+    Pass any subset. ``models`` is merged role-by-role (won't drop existing
+    roles). Typically called once during setup after suggest_config.
+    """
+    updates: dict[str, Any] = {}
+    if models is not None:
+        updates["models"] = models
+    if transport is not None:
+        updates["transport"] = transport
+    if base_url is not None:
+        updates["base_url"] = base_url
+    if assets_dir is not None:
+        updates["assets_dir"] = assets_dir
+    if not updates:
+        return {"saved": False, "config": cfg.load_config(), "note": "nothing to update"}
+    return {"saved": True, "config": cfg.save_config(updates), "path": str(cfg.config_path())}
 
 
 def main() -> None:

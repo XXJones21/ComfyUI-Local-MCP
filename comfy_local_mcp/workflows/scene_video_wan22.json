@@ -24,38 +24,61 @@
     "frames": "12.inputs.num_frames",
     "width": "12.inputs.width",
     "height": "12.inputs.height",
-    "steps": "20.inputs.steps"
+    "steps": "20.inputs.steps",
+    "wan_vae": "5.inputs.model_name",
+    "wan_t5": "7.inputs.model_name"
   },
   "graph": {
     "4": {
       "class_type": "WanVideoModelLoader",
-      "inputs": {"model": "wan2.2-i2v-14b.safetensors", "base_precision": "fp16", "quantization": "fp8_e4m3fn", "attention_mode": "sdpa"}
+      "inputs": {
+        "model": "wan2.2-i2v-14b.safetensors",
+        "base_precision": "fp16",
+        "quantization": "fp8_e4m3fn",
+        "attention_mode": "sdpa"
+      }
     },
     "5": {
       "class_type": "WanVideoVAELoader",
-      "inputs": {"model_name": "Wan2_1_VAE_bf16.safetensors"}
+      "inputs": {
+        "model_name": "Wan2_1_VAE_bf16.safetensors"
+      }
     },
     "6": {
       "class_type": "WanVideoTextEncode",
       "inputs": {
         "positive_prompt": "cinematic scene motion, hero shot",
         "negative_prompt": "static, jitter, flicker, watermark, low quality",
-        "t5": ["7", 0]
+        "t5": [
+          "7",
+          0
+        ]
       }
     },
     "7": {
       "class_type": "WanVideoT5TextEncoderLoader",
-      "inputs": {"model_name": "umt5_xxl_fp16.safetensors", "precision": "fp16"}
+      "inputs": {
+        "model_name": "umt5_xxl_fp16.safetensors",
+        "precision": "fp16"
+      }
     },
     "10": {
       "class_type": "LoadImage",
-      "inputs": {"image": "input.png"}
+      "inputs": {
+        "image": "input.png"
+      }
     },
     "12": {
       "class_type": "WanVideoImageToVideoEncode",
       "inputs": {
-        "image": ["10", 0],
-        "vae": ["5", 0],
+        "image": [
+          "10",
+          0
+        ],
+        "vae": [
+          "5",
+          0
+        ],
         "width": 832,
         "height": 480,
         "num_frames": 81,
@@ -67,9 +90,18 @@
     "20": {
       "class_type": "WanVideoSampler",
       "inputs": {
-        "model": ["4", 0],
-        "image_embeds": ["12", 0],
-        "text_embeds": ["6", 0],
+        "model": [
+          "4",
+          0
+        ],
+        "image_embeds": [
+          "12",
+          0
+        ],
+        "text_embeds": [
+          "6",
+          0
+        ],
         "steps": 25,
         "cfg": 6.0,
         "seed": 0,
@@ -79,12 +111,25 @@
     },
     "30": {
       "class_type": "WanVideoDecode",
-      "inputs": {"samples": ["20", 0], "vae": ["5", 0], "enable_vae_tiling": true}
+      "inputs": {
+        "samples": [
+          "20",
+          0
+        ],
+        "vae": [
+          "5",
+          0
+        ],
+        "enable_vae_tiling": true
+      }
     },
     "31": {
       "class_type": "VHS_VideoCombine",
       "inputs": {
-        "images": ["30", 0],
+        "images": [
+          "30",
+          0
+        ],
         "frame_rate": 16,
         "loop_count": 0,
         "filename_prefix": "comfy_video_wan",

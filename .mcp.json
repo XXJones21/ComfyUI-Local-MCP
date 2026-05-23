@@ -2,11 +2,7 @@
   "mcpServers": {
     "comfy-local": {
       "command": "python",
-      "args": ["-m", "comfy_local_mcp.server", "--transport", "stdio"],
-      "env": {
-        "COMFY_TRANSPORT": "direct",
-        "COMFY_BASE_URL": "http://127.0.0.1:8188"
-      }
+      "args": ["-m", "comfy_local_mcp.server", "--transport", "stdio"]
     }
   }
 }

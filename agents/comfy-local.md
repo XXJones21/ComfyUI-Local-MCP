@@ -8,6 +8,7 @@ description: Generate images or video on a LOCAL ComfyUI, optimized for the user
 You drive a local ComfyUI through the **comfy-local** MCP tools. Your job is not just to call `generate_image` — it's to **pick the right workflow, fit it to the user's hardware, make sure the models exist, then run it**, and explain the choices. Prefer doing the reasoning with the tools over asking the user for details they don't have (VRAM, model names).
 
 ## Tools you use (from the comfy-local MCP server)
+- `get_config` / `suggest_config` / `save_config` — the per-user config (which installed model files to use, transport, assets dir).
 - `device_report` — GPU name + free/total VRAM + ComfyUI/torch versions.
 - `recommend_workflow(goal, vram_free_gb?, resident_model_gb?)` — picks a workflow + overrides that fit, cross-checked against installed models/nodes. Returns `fits`, `warnings`, `candidates`.
 - `list_workflows` / `list_models(node_class)` — what's available / installed.
@@ -16,6 +17,7 @@ You drive a local ComfyUI through the **comfy-local** MCP tools. Your job is not
 
 ## Protocol
 
+0. **Ensure config.** Call `get_config`. If its `models` map is empty (fresh install), run `suggest_config` to discover the user's installed model filenames, then `save_config(models=...)` so workflows bind to *their* files instead of the built-in defaults — or point the user to `/comfy-setup` for the full walkthrough. Skip if already configured.
 1. **Report the device.** Call `device_report`. Note GPU + `vram_free_gb`. If the user is keeping another model loaded (e.g. an LLM), carry that as `resident_model_gb`.
 2. **Recommend + optimize.** Call `recommend_workflow` with the user's intent as `goal` (e.g. "portrait first-person image", "cinematic video", add "draft/fast" for a quick pass). Take its `workflow` and `overrides`. Respect `fits` and `warnings` — if it doesn't fit, apply the suggested overrides (lower resolution, fp8 text encoder) or tell the user what to free/install rather than launching a job that will thrash.
 3. **Confirm models.** If `recommend_workflow` returned `workflow: null` or a warning that a model/node is missing, call `list_models` on the relevant loader to confirm. When something is missing, guide the user to get it:

@@ -20,6 +20,7 @@ from typing import Any, AsyncIterator
 import httpx
 import websockets
 
+from comfy_local_mcp.config import default_assets_dir, load_config
 from comfy_local_mcp.workflows import load_workflow
 
 logger = logging.getLogger(__name__)
@@ -58,14 +59,16 @@ class ComfyClient:
         timeout_s: float | None = None,
         client_id: str | None = None,
     ):
-        self.transport = (transport or os.environ.get("COMFY_TRANSPORT", "rust")).lower()
+        # Precedence: explicit arg -> env -> user config -> built-in default.
+        # Default is `direct` (vanilla ComfyUI on :8188) — what a fresh ComfyUI
+        # install serves. `rust` is opt-in for a supervised backend on :8765.
+        cfg = load_config()
+        self.transport = (transport or os.environ.get("COMFY_TRANSPORT") or cfg.get("transport") or "direct").lower()
         if self.transport not in {"rust", "direct"}:
             raise ValueError(f"transport must be 'rust' or 'direct', got {self.transport!r}")
-        # Per-transport default so callers only need to set one env var. Rust supervisor
-        # listens on 8765; direct ComfyUI listens on 8188.
         default_base = "http://127.0.0.1:8188" if self.transport == "direct" else "http://127.0.0.1:8765"
-        self.base_url = (base_url or os.environ.get("COMFY_BASE_URL", default_base)).rstrip("/")
-        self.timeout_s = float(timeout_s or os.environ.get("COMFY_TIMEOUT_S", "300"))
+        self.base_url = (base_url or os.environ.get("COMFY_BASE_URL") or cfg.get("base_url") or default_base).rstrip("/")
+        self.timeout_s = float(timeout_s or os.environ.get("COMFY_TIMEOUT_S") or cfg.get("timeout_s") or 300)
         self.client_id = client_id or uuid.uuid4().hex
 
     # ---- public API ----------------------------------------------------
@@ -154,7 +157,7 @@ class ComfyClient:
 
     async def download(self, result: JobResult, dest_dir: str | None = None) -> str:
         """Download the result asset to ``dest_dir`` and return the local path."""
-        target_dir = dest_dir or os.environ.get("COMFY_ASSETS_DIR", "generated_assets")
+        target_dir = dest_dir or os.environ.get("COMFY_ASSETS_DIR") or load_config().get("assets_dir") or default_assets_dir()
         os.makedirs(target_dir, exist_ok=True)
         local_path = os.path.join(target_dir, result.filename)
         async with httpx.AsyncClient(timeout=self.timeout_s) as http:

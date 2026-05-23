@@ -35,7 +35,10 @@ hf download comfyanonymous/flux_text_encoders t5xxl_fp8_e4m3fn.safetensors --loc
 ```
 Pick the text-encoder precision `recommend_workflow` advises (fp8 on tight VRAM). Re-run `list_models` to confirm registration (ComfyUI may need a refresh/restart).
 
-## Step 5 — Verify
+## Step 5 — Write the config (so the tools/subagent use *your* models)
+This is the key step that un-hardcodes everything. Run `suggest_config` — it inspects the installed ComfyUI models and proposes a `models` map (logical role → your actual filename, e.g. `flux_unet` → whatever Flux GGUF you downloaded). Review it with the user (especially the `t5` precision and any `missing` roles), then persist with `save_config(models=<proposed>)`. Optionally set `assets_dir` (where outputs land) and `base_url`/`transport` if ComfyUI isn't the default `:8188`. From now on every workflow binds to these files instead of the built-in defaults. Confirm with `get_config`.
+
+## Step 6 — Verify
 1. `device_report` → sane GPU + VRAM.
 2. `recommend_workflow(goal="image")` → a workflow with `fits: true` (or a clear downsize warning).
 3. `generate_image(prompt="first person POV, misty forest at dusk")` → returns an `asset_url`. Open it.

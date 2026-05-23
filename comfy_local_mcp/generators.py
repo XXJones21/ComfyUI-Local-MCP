@@ -26,6 +26,7 @@ from datetime import datetime
 from typing import Any
 
 from comfy_local_mcp.client import ComfyClient, ComfyError, run_sync
+from comfy_local_mcp.config import default_assets_dir, load_config
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,7 @@ class ComfyImageGenerator:
     ):
         self.client = client or ComfyClient()
         self.default_workflow = default_workflow
-        self.assets_dir = assets_dir or os.environ.get("COMFY_ASSETS_DIR", "generated_assets")
+        self.assets_dir = assets_dir or os.environ.get("COMFY_ASSETS_DIR") or load_config().get("assets_dir") or default_assets_dir()
 
     def generate_image(self, prompt: str, **kwargs) -> dict[str, Any] | None:
         """Synchronous wrapper preserving the legacy return shape.

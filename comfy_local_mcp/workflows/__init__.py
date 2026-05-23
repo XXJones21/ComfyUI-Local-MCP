@@ -12,6 +12,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from comfy_local_mcp.config import configured_models
+
 _WORKFLOWS_DIR = Path(__file__).parent
 
 
@@ -26,6 +28,11 @@ def load_workflow(name: str, overrides: dict[str, Any] | None = None) -> dict:
     contains a top-level ``"_overrides"`` map from logical names (e.g. ``"prompt"``)
     to ``"<node_id>.<input_key>"`` targets. Callers pass logical names; this
     function resolves them.
+
+    Model roles the workflow exposes (e.g. ``flux_unet``, ``t5``, ``ckpt``) are
+    auto-filled from the user's config (``configured_models()``) so workflows
+    use whatever models are actually installed instead of the in-JSON defaults.
+    Explicit ``overrides`` always win over config.
     """
     path = _WORKFLOWS_DIR / f"{name}.json"
     if not path.exists():
@@ -35,7 +42,13 @@ def load_workflow(name: str, overrides: dict[str, Any] | None = None) -> dict:
     raw = json.loads(path.read_text(encoding="utf-8"))
     graph = copy.deepcopy(raw.get("graph") or raw)
     override_map: dict[str, str] = raw.get("_overrides") or {}
-    for key, value in (overrides or {}).items():
+    # Config-driven model defaults for the roles this workflow declares, then
+    # explicit overrides on top (caller wins).
+    effective: dict[str, Any] = {
+        role: filename for role, filename in configured_models().items() if role in override_map
+    }
+    effective.update(overrides or {})
+    for key, value in effective.items():
         target = override_map.get(key, key)
         if "." not in target:
             raise KeyError(
