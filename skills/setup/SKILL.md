@@ -20,7 +20,7 @@ Record GPU name and total VRAM — it drives every model choice below.
 Check if one is already running: `GET http://127.0.0.1:8188/system_stats` (200 = present). If yes, note its install path and skip install. If not, install per platform (see `references/install-comfyui.md`): Windows portable, the ComfyUI **Desktop** app, `comfy-cli`, or git+venv. Start it and re-confirm `/system_stats`.
 
 ## Step 2 — Install comfy-local-mcp
-From the repo root: `pip install -e ".[mcp]"` (or `pip install -e "git+https://github.com/XXJones21/comfy-local-mcp#egg=comfy-local-mcp[mcp]"` once published). Use the **same Python** that Claude Code's plugin will launch (the one on PATH). Verify: `python -c "import comfy_local_mcp; print(comfy_local_mcp.list_workflows())"`.
+From the repo root: `pip install -e ".[mcp]"` (or `pip install "comfy-local-mcp[mcp] @ git+https://github.com/XXJones21/ComfyUI-Local-MCP"`). Use the **same Python** that Claude Code's plugin will launch (the one on PATH). Verify: `python -c "import comfy_local_mcp; print(comfy_local_mcp.list_workflows())"`.
 
 ## Step 3 — Register the MCP servers
 - **comfy-local**: if installed as a Claude Code plugin, the bundled `.mcp.json` wires it automatically (stdio). For a standalone/shared HTTP server instead: start `comfy-local-mcp --transport http` and `claude mcp add --transport http comfy-local http://127.0.0.1:9400/mcp`.
