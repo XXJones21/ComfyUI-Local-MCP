@@ -117,13 +117,66 @@ class ComfyClient:
                     break
 
     async def wait_for_result(self, prompt_id: str) -> JobResult:
-        """Block until the job completes and return its primary asset."""
-        async for event in self.stream(prompt_id):
-            if event["stage"] == "error":
-                raise ComfyError(event.get("kind", "error"), event.get("message", "job failed"), prompt_id)
-            if event["stage"] in {"executed", "completed"}:
-                break
+        """Block until the job completes and return its primary asset.
+
+        Resilient to WebSocket drops on long renders: ComfyUI keeps executing a
+        submitted job server-side even if the progress WS closes (which happens
+        on multi-minute video renders). If the WS errors or ends before the
+        completion event, fall back to polling ``/history/{prompt_id}`` so a
+        transient WS drop no longer reports a false failure (and discards a
+        video ComfyUI actually produced).
+        """
+        completed = False
+        try:
+            async for event in self.stream(prompt_id):
+                if event["stage"] == "error":
+                    raise ComfyError(event.get("kind", "error"), event.get("message", "job failed"), prompt_id)
+                if event["stage"] in {"executed", "completed"}:
+                    completed = True
+                    break
+        except ComfyError:
+            raise
+        except Exception as exc:  # noqa: BLE001 — any WS failure (close/timeout/reset)
+            logger.warning(
+                "comfy progress WS ended early for prompt_id=%s (%s); polling /history",
+                prompt_id, exc,
+            )
+        if not completed:
+            # WS dropped or ended without a completion event — confirm via history.
+            await self._poll_history_until_done(prompt_id)
         return await self.fetch_result(prompt_id)
+
+    async def _poll_history_until_done(self, prompt_id: str, poll_interval: float = 3.0) -> None:
+        """Poll ``/history/{prompt_id}`` until the job completes or errors.
+
+        Bounded by ``timeout_s``. Used as the WS-drop fallback in
+        ``wait_for_result`` so long renders are recovered rather than failed.
+        """
+        if self.transport == "rust":
+            history_url = f"{self.base_url}/comfy/history/{prompt_id}"
+        else:
+            history_url = f"{self.base_url}/history/{prompt_id}"
+        deadline = asyncio.get_event_loop().time() + self.timeout_s
+        async with httpx.AsyncClient(timeout=30.0) as http:
+            while True:
+                try:
+                    resp = await http.get(history_url)
+                    if resp.status_code < 400:
+                        history = resp.json()
+                        entry = history.get(prompt_id) if isinstance(history, dict) else None
+                        if entry:
+                            status = entry.get("status") or {}
+                            if status.get("status_str") == "error":
+                                raise ComfyError("execution_error", "ComfyUI reported job error", prompt_id)
+                            if status.get("completed") or entry.get("outputs"):
+                                return
+                except ComfyError:
+                    raise
+                except Exception:  # noqa: BLE001 — transient fetch error, keep polling
+                    pass
+                if asyncio.get_event_loop().time() > deadline:
+                    raise ComfyError("timeout", f"job did not complete within {self.timeout_s}s", prompt_id)
+                await asyncio.sleep(poll_interval)
 
     async def fetch_result(self, prompt_id: str) -> JobResult:
         """Fetch the primary output asset metadata for a completed job."""
