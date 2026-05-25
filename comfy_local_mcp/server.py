@@ -75,12 +75,21 @@ _WORKFLOW_PROFILES: dict[str, dict[str, Any]] = {
         "require_node": "CheckpointLoaderSimple",
         "model_check": ("CheckpointLoaderSimple", "ckpt_name", "xl"),
     },
+    "scene_video_ltx2": {
+        "goal": "video",
+        "quality": "high",
+        # ltx-2.3 Q3 unet ~9.9 + gemma Q4 gguf ~7.3 (offloaded) + connectors 2.3 + vaes 1.8;
+        # sequential offload keeps resident VRAM well under 16 GB (verified ~273s on a 4080).
+        "footprint_fp16_gb": 13.5,
+        "require_node": "DualCLIPLoaderGGUF",
+        "model_check": ("UnetLoaderGGUF", "unet_name", "ltx-2.3"),
+    },
     "scene_video_ltx": {
         "goal": "video",
         "quality": "standard",
         "footprint_fp16_gb": 9.0,
         "require_node": "LTXVCheckpointLoader",
-        "model_check": ("LTXVCheckpointLoader", "ckpt_name", "ltx"),
+        "model_check": ("LTXVCheckpointLoader", "ckpt_name", "ltx-video"),
     },
     "scene_video_wan22": {
         "goal": "video",

@@ -1,0 +1,487 @@
+{
+  "_meta": {
+    "name": "scene_video_ltx2",
+    "description": "LTX-2.3 GGUF two-stage text-to-video, portrait 9:16 (768x1344), 121 frames @ 24fps. Verified local on RTX 4080 16GB. Stage1 base model cfg=4 LTXVScheduler (8 steps -- the quality/speed sweet spot: ~2.5min/5s, ~5.2min/10s, vs 20 steps for marginal gain); stage2 distilled-LoRA cfg=1 refine + x2 latent upscale. Override `steps` to tune stage-1.",
+    "required_models": [
+      "unet/ltx-2.3-22b-dev-Q3_K_S.gguf",
+      "text_encoders/gemma-3-12b-it-Q4_K_M.gguf",
+      "text_encoders/ltx-2.3-22b-dev_embeddings_connectors.safetensors",
+      "vae/ltx-2.3-22b-dev_video_vae.safetensors",
+      "vae/ltx-2.3-22b-dev_audio_vae.safetensors",
+      "loras/ltx-2.3-22b-distilled-lora-384.safetensors",
+      "latent_upscale_models/ltx-2.3-spatial-upscaler-x2-1.0.safetensors"
+    ],
+    "required_nodes": [
+      "UnetLoaderGGUF",
+      "DualCLIPLoaderGGUF",
+      "VAELoaderKJ",
+      "LTXVConditioning",
+      "LTXVScheduler",
+      "ManualSigmas",
+      "CFGGuider",
+      "SamplerCustomAdvanced",
+      "LTXVLatentUpsampler",
+      "LTXVCropGuides",
+      "LTXVConcatAVLatent",
+      "LTXVSeparateAVLatent",
+      "VAEDecodeTiled",
+      "CreateVideo",
+      "SaveVideo"
+    ],
+    "notes": "CRITICAL: DualCLIPLoaderGGUF clip_name2 MUST be the embeddings_connectors file (the learned LTX connector), NOT text_projection -- wrong clip2 yields pure noise. clip_name1 is the Gemma GGUF. Source: workflow embedded in unsloth/LTX-2.3-GGUF unsloth_flowers.mp4. Requires the kornia 'pad' shim in ComfyUI-LTXVideo/pyramid_blending.py for the pack to load."
+  },
+  "_overrides": {
+    "prompt": "5.inputs.text",
+    "negative_prompt": "6.inputs.text",
+    "seed": "16.inputs.noise_seed",
+    "width": "7.inputs.width",
+    "height": "7.inputs.height",
+    "frames": "10.inputs.value",
+    "frame_rate": "11.inputs.value",
+    "steps": "22.inputs.steps",
+    "ltx2_unet": "3.inputs.unet_name",
+    "ltx2_gemma": "47.inputs.clip_name1",
+    "ltx2_connectors": "47.inputs.clip_name2",
+    "ltx2_video_vae": "2.inputs.vae_name",
+    "ltx2_audio_vae": "1.inputs.vae_name",
+    "ltx2_distilled_lora": "27.inputs.lora_name",
+    "ltx2_upscaler": "26.inputs.model_name"
+  },
+  "graph": {
+    "1": {
+      "inputs": {
+        "vae_name": "ltx-2.3-22b-dev_audio_vae.safetensors",
+        "device": "main_device",
+        "weight_dtype": "bf16"
+      },
+      "class_type": "VAELoaderKJ"
+    },
+    "2": {
+      "inputs": {
+        "vae_name": "ltx-2.3-22b-dev_video_vae.safetensors",
+        "device": "main_device",
+        "weight_dtype": "bf16"
+      },
+      "class_type": "VAELoaderKJ"
+    },
+    "3": {
+      "inputs": {
+        "unet_name": "ltx-2.3-22b-dev-Q3_K_S.gguf"
+      },
+      "class_type": "UnetLoaderGGUF"
+    },
+    "5": {
+      "inputs": {
+        "text": "First person POV, immersive cinematic scene, dark dreamlike atmosphere",
+        "clip": [
+          "47",
+          0
+        ]
+      },
+      "class_type": "CLIPTextEncode"
+    },
+    "6": {
+      "inputs": {
+        "text": "other people, other person, figures, silhouettes, humans, crowd, third person, full body, blurry, low quality, still frame, watermark, text, subtitles, logo, cartoon, deformed",
+        "clip": [
+          "47",
+          0
+        ]
+      },
+      "class_type": "CLIPTextEncode"
+    },
+    "7": {
+      "inputs": {
+        "width": 768,
+        "height": 1344,
+        "batch_size": 1,
+        "color": 0
+      },
+      "class_type": "EmptyImage"
+    },
+    "8": {
+      "inputs": {
+        "upscale_method": "lanczos",
+        "scale_by": 0.5,
+        "image": [
+          "7",
+          0
+        ]
+      },
+      "class_type": "ImageScaleBy"
+    },
+    "9": {
+      "inputs": {
+        "image": [
+          "8",
+          0
+        ]
+      },
+      "class_type": "GetImageSize"
+    },
+    "10": {
+      "inputs": {
+        "value": 121
+      },
+      "class_type": "PrimitiveInt"
+    },
+    "11": {
+      "inputs": {
+        "value": 24
+      },
+      "class_type": "PrimitiveInt"
+    },
+    "12": {
+      "inputs": {
+        "value": 24.0
+      },
+      "class_type": "PrimitiveFloat"
+    },
+    "13": {
+      "inputs": {
+        "frames_number": [
+          "10",
+          0
+        ],
+        "frame_rate": [
+          "11",
+          0
+        ],
+        "batch_size": 1,
+        "audio_vae": [
+          "1",
+          0
+        ]
+      },
+      "class_type": "LTXVEmptyLatentAudio"
+    },
+    "14": {
+      "inputs": {
+        "width": [
+          "9",
+          0
+        ],
+        "height": [
+          "9",
+          1
+        ],
+        "length": [
+          "10",
+          0
+        ],
+        "batch_size": 1
+      },
+      "class_type": "EmptyLTXVLatentVideo"
+    },
+    "15": {
+      "inputs": {
+        "video_latent": [
+          "14",
+          0
+        ],
+        "audio_latent": [
+          "13",
+          0
+        ]
+      },
+      "class_type": "LTXVConcatAVLatent"
+    },
+    "16": {
+      "inputs": {
+        "noise_seed": 845334242002042
+      },
+      "class_type": "RandomNoise"
+    },
+    "17": {
+      "inputs": {
+        "noise": [
+          "16",
+          0
+        ],
+        "guider": [
+          "18",
+          0
+        ],
+        "sampler": [
+          "20",
+          0
+        ],
+        "sigmas": [
+          "22",
+          0
+        ],
+        "latent_image": [
+          "15",
+          0
+        ]
+      },
+      "class_type": "SamplerCustomAdvanced"
+    },
+    "18": {
+      "inputs": {
+        "cfg": 4.0,
+        "model": [
+          "3",
+          0
+        ],
+        "positive": [
+          "23",
+          0
+        ],
+        "negative": [
+          "23",
+          1
+        ]
+      },
+      "class_type": "CFGGuider"
+    },
+    "19": {
+      "inputs": {
+        "av_latent": [
+          "17",
+          0
+        ]
+      },
+      "class_type": "LTXVSeparateAVLatent"
+    },
+    "20": {
+      "inputs": {
+        "sampler_name": "euler_ancestral"
+      },
+      "class_type": "KSamplerSelect"
+    },
+    "21": {
+      "inputs": {
+        "positive": [
+          "23",
+          0
+        ],
+        "negative": [
+          "23",
+          1
+        ],
+        "latent": [
+          "19",
+          0
+        ]
+      },
+      "class_type": "LTXVCropGuides"
+    },
+    "22": {
+      "inputs": {
+        "steps": 8,
+        "max_shift": 2.05,
+        "base_shift": 0.95,
+        "stretch": true,
+        "terminal": 0.1,
+        "latent": [
+          "15",
+          0
+        ]
+      },
+      "class_type": "LTXVScheduler"
+    },
+    "23": {
+      "inputs": {
+        "frame_rate": [
+          "12",
+          0
+        ],
+        "positive": [
+          "5",
+          0
+        ],
+        "negative": [
+          "6",
+          0
+        ]
+      },
+      "class_type": "LTXVConditioning"
+    },
+    "25": {
+      "inputs": {
+        "samples": [
+          "21",
+          2
+        ],
+        "upscale_model": [
+          "26",
+          0
+        ],
+        "vae": [
+          "2",
+          0
+        ]
+      },
+      "class_type": "LTXVLatentUpsampler"
+    },
+    "26": {
+      "inputs": {
+        "model_name": "ltx-2.3-spatial-upscaler-x2-1.0.safetensors"
+      },
+      "class_type": "LatentUpscaleModelLoader"
+    },
+    "27": {
+      "inputs": {
+        "lora_name": "ltx-2.3-22b-distilled-lora-384.safetensors",
+        "strength_model": 1.0,
+        "model": [
+          "3",
+          0
+        ]
+      },
+      "class_type": "LoraLoaderModelOnly"
+    },
+    "28": {
+      "inputs": {
+        "video_latent": [
+          "25",
+          0
+        ],
+        "audio_latent": [
+          "19",
+          1
+        ]
+      },
+      "class_type": "LTXVConcatAVLatent"
+    },
+    "29": {
+      "inputs": {
+        "sampler_name": "euler_ancestral"
+      },
+      "class_type": "KSamplerSelect"
+    },
+    "30": {
+      "inputs": {
+        "sigmas": "0.909375, 0.725, 0.421875, 0.0"
+      },
+      "class_type": "ManualSigmas"
+    },
+    "31": {
+      "inputs": {
+        "cfg": 1.0,
+        "model": [
+          "27",
+          0
+        ],
+        "positive": [
+          "21",
+          0
+        ],
+        "negative": [
+          "21",
+          1
+        ]
+      },
+      "class_type": "CFGGuider"
+    },
+    "32": {
+      "inputs": {
+        "noise_seed": 809542877813341
+      },
+      "class_type": "RandomNoise"
+    },
+    "33": {
+      "inputs": {
+        "noise": [
+          "32",
+          0
+        ],
+        "guider": [
+          "31",
+          0
+        ],
+        "sampler": [
+          "29",
+          0
+        ],
+        "sigmas": [
+          "30",
+          0
+        ],
+        "latent_image": [
+          "28",
+          0
+        ]
+      },
+      "class_type": "SamplerCustomAdvanced"
+    },
+    "34": {
+      "inputs": {
+        "av_latent": [
+          "33",
+          1
+        ]
+      },
+      "class_type": "LTXVSeparateAVLatent"
+    },
+    "35": {
+      "inputs": {
+        "samples": [
+          "34",
+          1
+        ],
+        "audio_vae": [
+          "1",
+          0
+        ]
+      },
+      "class_type": "LTXVAudioVAEDecode"
+    },
+    "36": {
+      "inputs": {
+        "fps": [
+          "12",
+          0
+        ],
+        "images": [
+          "37",
+          0
+        ],
+        "audio": [
+          "35",
+          0
+        ]
+      },
+      "class_type": "CreateVideo"
+    },
+    "37": {
+      "inputs": {
+        "tile_size": 512,
+        "overlap": 64,
+        "temporal_size": 4096,
+        "temporal_overlap": 8,
+        "samples": [
+          "34",
+          0
+        ],
+        "vae": [
+          "2",
+          0
+        ]
+      },
+      "class_type": "VAEDecodeTiled"
+    },
+    "38": {
+      "inputs": {
+        "filename_prefix": "comfy_scene_ltx2",
+        "format": "mp4",
+        "codec": "auto",
+        "video-preview": "",
+        "video": [
+          "36",
+          0
+        ]
+      },
+      "class_type": "SaveVideo"
+    },
+    "47": {
+      "inputs": {
+        "clip_name1": "gemma-3-12b-it-Q4_K_M.gguf",
+        "clip_name2": "ltx-2.3-22b-dev_embeddings_connectors.safetensors",
+        "type": "ltxv"
+      },
+      "class_type": "DualCLIPLoaderGGUF"
+    }
+  }
+}

@@ -52,7 +52,8 @@ ComfyUI API-format graphs wrapped as `{_meta, _overrides, graph}`, patched by lo
 | `scene_image_flux` | Flux.1-dev Q4 GGUF, portrait 9:16 — the proven hero path |
 | `scene_image_sdxl_turbo` | SDXL-Turbo, 1-step draft/fast |
 | `scene_image_sdxl_lora` | SDXL + LoRA, styled |
-| `scene_video_ltx` | LTX-Video, image→video |
+| `scene_video_ltx2` | **LTX-2.3 GGUF two-stage text→video, portrait 9:16 — the proven video hero path** (verified on a 16 GB RTX 4080, ~45 s compute per second of output) |
+| `scene_video_ltx` | LTX-Video 0.9.x, image→video (legacy/fast) |
 | `scene_video_wan22` | Wan2.2, cinematic video |
 | `skybox_sdxl_turbo` | 360° skybox |
 
@@ -103,7 +104,7 @@ This repo is also a Claude Code plugin: it ships the **`comfy-local`** subagent 
 
 ## Configuration
 
-Nothing about your machine is hardcoded. A per-user config at **`~/.comfy-local-mcp/config.json`** (override with `COMFY_LOCAL_MCP_CONFIG`) holds your transport/URL, output dir, and a **models map** — logical roles (`flux_unet`, `t5`, `clip_l`, `flux_vae`, `sdxl_turbo_ckpt`, `ltx_ckpt`, …) → the actual filenames you have installed. Workflows bind to those instead of the built-in defaults; explicit per-call overrides still win.
+Nothing about your machine is hardcoded. A per-user config at **`~/.comfy-local-mcp/config.json`** (override with `COMFY_LOCAL_MCP_CONFIG`) holds your transport/URL, output dir, and a **models map** — logical roles (`flux_unet`, `t5`, `clip_l`, `flux_vae`, `sdxl_turbo_ckpt`, `ltx_ckpt`, the LTX-2.3 video roles `ltx2_unet`/`ltx2_gemma`/`ltx2_connectors`/`ltx2_video_vae`/`ltx2_audio_vae`/`ltx2_distilled_lora`/`ltx2_upscaler`, …) → the actual filenames you have installed. Workflows bind to those instead of the built-in defaults; explicit per-call overrides still win.
 
 You don't hand-write it: on first run the **setup skill / `comfy-local` subagent** calls `suggest_config` (inspects your installed ComfyUI models) and `save_config` to populate it. Missing roles are reported so you know what to download. With no config at all, the package still runs against a default ComfyUI on `:8188` using the workflows' fallback filenames.
 

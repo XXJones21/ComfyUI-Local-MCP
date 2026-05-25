@@ -49,7 +49,15 @@ def load_workflow(name: str, overrides: dict[str, Any] | None = None) -> dict:
     }
     effective.update(overrides or {})
     for key, value in effective.items():
-        target = override_map.get(key, key)
+        if key in override_map:
+            target = override_map[key]
+        elif "." in key:
+            target = key  # raw "<node_id>.<input_key>" form passed directly
+        else:
+            # Undeclared logical override this workflow doesn't expose — ignore
+            # it (e.g. passing image_input to a text-to-video workflow) instead
+            # of failing the whole submission.
+            continue
         if "." not in target:
             raise KeyError(
                 f"workflow '{name}': override '{key}' must resolve to '<node_id>.<input_key>'"

@@ -50,6 +50,14 @@ MODEL_ROLES = (
     "ltx_ckpt",
     "wan_vae",
     "wan_t5",
+    # LTX-2.3 GGUF video (scene_video_ltx2)
+    "ltx2_unet",
+    "ltx2_gemma",
+    "ltx2_connectors",
+    "ltx2_video_vae",
+    "ltx2_audio_vae",
+    "ltx2_distilled_lora",
+    "ltx2_upscaler",
 )
 
 
